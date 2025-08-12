@@ -1,50 +1,95 @@
 import numpy as np
 import sounddevice as sd
 import matplotlib.pyplot as plt
-import scipy.io.wavfile as wav
-from scipy.signal import spectrogram
-
-from output import getBinaryOutput
-
-def createSpectrogram(f, t, Sxx, data):
-    if len(data.shape) > 1:
-        data = data[:, 0]
-
-    plt.figure(figsize=(10, 5))
-    plt.pcolormesh(t, f, 10*np.log10(Sxx + 1e-10), shading='gouraud')
-    plt.ylabel("Fréquence [Hz]")
-    plt.xlabel("Temps [s]")
-    plt.title("Spectrogramme")
-    plt.colorbar(label="Intensité (dB)")
-    plt.ylim(0, 21000)
-    plt.savefig("spectrogramme.png")
-
-def record():
-    print("recording...")
-    audio_data = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='float32')
-    sd.wait()
-    print("done")
-    wav.write("record.wav", fs, audio_data)
 
 
-fs = 48000        
+sd.default.device = (6, None)
+print(sd.query_devices())
+
+# settings
+fs = 48000
+blocksize = 1024
 f0 = 18000        
 f1 = 19000
 tol = 50     
 
-doRecord = 1
+# global shit
+bits = ""
+newBit = True
 
-duration = 20
-sd.default.device = (7, None)
-#print(sd.query_devices())
+freqCount = 0
+noneCount = 0
+
+bitCount = 0
+
+freqs = []
+
+def add_bit(bit):
+    """add bit to bits list and set spaces to seperate the bytes"""
+    global bitCount, bits
+    bits += str(bit)
+    bitCount += 1
+    if(bitCount == 8):
+        bits += " "
+        bitCount =0
+
+def getBit(freq, f0, f1, tol):
+    """check if freq is corresponding to f0 or f1 with a certain tolerance and return the corresponding bit (0 or 1)"""
+    bit = None
+    if(freq > f0 - tol and freq < f0 + tol):
+        bit = 0
+    elif(freq > f1 - tol and freq < f1 + tol):
+        bit = 1 
+    return bit
+
+def getDominantFrequence(indata):
+    """returns the dominant frequence from what the mic gets thanks to Fourier W Goat"""
+    data = indata[:, 0]
+    fft_vals = np.fft.rfft(data)
+    fft_freqs = np.fft.rfftfreq(len(data), 1/fs)
+    idx_max = np.argmax(np.abs(fft_vals))
+    return float(fft_freqs[idx_max])
 
 
-if(doRecord == 1):
-    record()
+def getBinaryOutput(indata, frames, time, status):
+    global bits, newBit, freqCount, noneCount, bitCount, freqs
 
-rate, data = wav.read("record.wav")
-frequences, times, Sxx = spectrogram(data, fs=rate, nperseg=1024)
-createSpectrogram(frequences, times, Sxx, data)
+    
+    freq = getDominantFrequence(indata)
+    bit = getBit(freq, f0, f1, tol) # is current frequence absolute garbage or is it corresponding to f0, or f1
 
-bits = getBinaryOutput(frequences, times, Sxx, f0, f1, tol)
-print(bits)
+    # the signal is composed with 3 frequences : f0, f1 and a separation frequence that can be anything, 
+    # the function getBit() consider it as None.
+    # it means that if we get a None in the signal, the next known frequence will be a new bit
+
+    if(bit != None and newBit):
+        newBit = False
+        add_bit(bit)
+    if(bit == None):
+        newBit = True
+    print(freq, bit, bits)
+
+
+with sd.InputStream(channels=1, callback=getBinaryOutput, samplerate=fs, blocksize=blocksize):
+    print("balance le son")
+    #infinite loop
+    while True:
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
