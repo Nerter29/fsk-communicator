@@ -3,7 +3,7 @@ import sounddevice as sd
 import matplotlib.pyplot as plt
 
 
-sd.default.device = (6, None)
+sd.default.device = (7, None)
 print(sd.query_devices())
 
 # settings
@@ -22,14 +22,27 @@ freqCount = 1
 
 bitCount = 0
 
+def byteToChar(byte):
+    ascii_code = int(byte, 2)
+    char = chr(ascii_code)
+    return char
+def allBitsToText(bits):
+    text = ""
+    for i in range(0, len(bits), 9):
+        char = byteToChar(bits[i:i + 8])
+        text += char
+    return text
 def add_bit(bit):
     """add bit to bits list and set spaces to seperate the bytes"""
     global bitCount, bits
     bits += str(bit)
     bitCount += 1
     if(bitCount == 8):
+        print(byteToChar(bits[len(bits) - 8:len(bits)]), end="", flush=True)
+
         bits += " "
         bitCount =0
+
 
 def getBit(freq, f0, f1, f2, tol):
     """check if freq is corresponding to f0 or f1 with a certain tolerance and return the corresponding bit (0 or 1)"""
@@ -71,14 +84,17 @@ def getBinaryOutput(indata, frames, time, status):
             add_bit(bit)
 
     previousBit = bit
-    print(freq, bit, bits)
+
+    #print(allBitsToText(bits), freq, bit, bits)
+
 
 with sd.InputStream(channels=1, callback=getBinaryOutput, samplerate=fs, blocksize=blocksize):
     print("balance le son")
     #infinite loop
-    while True:
-        pass
-
-
+    try:
+        while True:
+            pass
+    except:
+        print("\n",allBitsToText(bits))
 
 
