@@ -3,8 +3,8 @@ import sounddevice as sd
 import matplotlib.pyplot as plt
 
 
-sd.default.device = (7, None)
-print(sd.query_devices())
+#sd.default.device = (7, None)
+print(sd.query_devices(), "\n")
 
 # settings
 fs = 48000
@@ -14,12 +14,9 @@ f2 = 18000
 tol = 50     
 blocksize = 1024
 
-# global shit
 bits = ""
 previousBit = None
-
 freqCount = 1
-
 bitCount = 0
 
 def byteToChar(byte):
